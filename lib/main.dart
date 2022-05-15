@@ -4,13 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart';
 import 'package:web3dart/web3dart.dart';
+import 'package:flutter_web3/flutter_web3.dart' as fl;
 
 late Client httpClient;
-
 late Web3Client ethClient;
 
 //Ethereum address
-final String myAddress = "0xF2D5a6d399DFa94e29443E214e297047D48b2825";
+const String myAddress = "0xF2D5a6d399DFa94e29443E214e297047D48b2825";
 
 //url from Infura
 final String blockchainUrl =
@@ -35,13 +35,74 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const MyHomePage(),
+      home: Login(),
+    );
+  }
+}
+
+class Login extends StatefulWidget {
+  const Login({Key? key}) : super(key: key);
+
+  @override
+  State<Login> createState() => _LoginState();
+}
+
+class _LoginState extends State<Login> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: ElevatedButton(
+          onPressed: () async {
+            final accs = await fl.ethereum!.requestAccount();
+            print(accs);
+            var chain = await fl.ethereum!.getChainId();
+            if (chain == 4) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (c) {
+                    return MyHomePage(
+                      add: accs.first,
+                    );
+                  },
+                ),
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text("Wrong Chain"),
+                ),
+              );
+            }
+            fl.ethereum!.onChainChanged((chainId) {
+              if (chainId == 4) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (c) {
+                      return MyHomePage(
+                        add: accs.first,
+                      );
+                    },
+                  ),
+                );
+              }
+            });
+            fl.ethereum!.onAccountsChanged((accounts) {
+              print(accounts); // ['0xbar']
+            });
+          },
+          child: Text("Login With MetaMask"),
+        ),
+      ),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({Key? key}) : super(key: key);
+  MyHomePage({required this.add});
+  String add;
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
@@ -98,9 +159,9 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> vote(bool voteAlpha) async {
     //obtain private key for write operation
+
     Credentials key = EthPrivateKey.fromHex(
         "e2b2b3b66cbdd5d8b22c2aaf3077843e295a0d301ed7397790a1ca962125346f");
-
     //obtain our contract from abi in json file
     final contract = await getContract();
 
@@ -108,7 +169,6 @@ class _MyHomePageState extends State<MyHomePage> {
     final function = contract.function(
       voteAlpha ? "voteAlpha" : "voteBeta",
     );
-
     //send transaction using the our private key, function and contract
     await ethClient.sendTransaction(
         key,
@@ -131,6 +191,7 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
       body: Column(
         children: [
+          Text(widget.add),
           Card(
             child: Container(
               decoration: const BoxDecoration(
